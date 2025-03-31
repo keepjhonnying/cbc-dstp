@@ -3,10 +3,10 @@ $assetsFolderPath = "C:\assets"
 
 # URLs dos scripts PowerShell hospedados no GitHub
 $scriptUrls = @{
-    "script1.ps1" = "https://raw.githubusercontent.com/usuario/repositorio/main/script1.ps1"
-    "script2.ps1" = "https://raw.githubusercontent.com/usuario/repositorio/main/script2.ps1"
-    "script3.ps1" = "https://raw.githubusercontent.com/usuario/repositorio/main/script3.ps1"
-    "script4.ps1" = "https://raw.githubusercontent.com/usuario/repositorio/main/script4.ps1"
+    "wallpaper.ps1" = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/refs/heads/main/wallpaper.ps1"
+    #"hibernate.ps1" = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/refs/heads/main/hibernate.ps1"
+    #"gpo.ps1" = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/refs/heads/main/gpo.ps1"
+    #"script4.ps1" = "https://raw.githubusercontent.com/usuario/repositorio/main/script4.ps1"
 }
 
 # Verifica se a pasta existe, se não, cria como oculta
