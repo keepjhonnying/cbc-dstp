@@ -1,10 +1,12 @@
-﻿function Center-Text {
+﻿# Função para centralizar texto
+function Center-Text {
     param ([string]$text)
     $consoleWidth = [console]::WindowWidth
     $padLeft = [Math]::Max(0, ($consoleWidth - $text.Length) / 2)
     return ' ' * $padLeft + $text
 }
 
+# ASCII
 $asciiLines = @'
  ░▒▓███████▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓█▓▒░▒▓███████▓▒░▒▓████████▓▒░ 
 ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░     
@@ -15,73 +17,99 @@ $asciiLines = @'
 ░▒▓███████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░        ░▒▓█▓▒░     
                                                                        
 '@ -split "`n"
-
 foreach ($line in $asciiLines) {
     Write-Host (Center-Text $line) -ForegroundColor Cyan
 }
-
 Write-Host ""
 Write-Host (Center-Text "Desenvolvido por Jhonny Ilis") -ForegroundColor White
 Write-Host ""
 Write-Host (Center-Text "Pressione qualquer tecla para iniciar...") -ForegroundColor Green
-
-# Aguarda uma tecla
 [void][System.Console]::ReadKey($true)
 
-
-
-# Requer permissão de administrador
+# Verifica se é administrador
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
     [Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    #Write-Error "Execute este script como administrador."]
-    Write-Host "Execute este script como administrador...." -ForegroundColor Red -BackgroundColor White
+    Write-Host "Execute este script como administrador..." -ForegroundColor Red -BackgroundColor White
     exit
 }
 
-
-# Caminho para a pasta onde os scripts serão salvos (acessível a todos os usuários)
+# Caminhos
 $assetsFolderPath = "$env:ProgramData\cbc-assets"
 if (-not (Test-Path -Path $assetsFolderPath)) {
     New-Item -ItemType Directory -Path $assetsFolderPath -Force | Out-Null
     (Get-Item $assetsFolderPath).Attributes = "Hidden"
 }
 
-# URLs dos scripts PowerShell hospedados
-$scriptUrls = @{
-    "wallpaper.ps1" = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/refs/heads/main/wallpaper.ps1"
-    #"outro.ps1" = "https://raw.githubusercontent.com/exemplo/outro.ps1"
+# Verificação de versão
+$localVersionFile = Join-Path $assetsFolderPath "version.txt"
+$githubVersionUrl = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/main/version.txt"
+
+try {
+    $remoteVersion = (Invoke-WebRequest -Uri $githubVersionUrl -UseBasicParsing).Content.Trim()
+} catch {
+    Write-Host "Não foi possível obter a versão remota." -ForegroundColor Yellow
+    $remoteVersion = ""
 }
 
+$localVersion = ""
+if (Test-Path $localVersionFile) {
+    $localVersion = Get-Content $localVersionFile -Raw | ForEach-Object { $_.Trim() }
+}
 
+# Lista de arquivos a excluir se a versão for diferente
+$arquivosParaExcluir = @("wallpaper.exe", "version.txt")
 
-# Para cada script
+if ($remoteVersion -and $localVersion -ne $remoteVersion) {
+    Write-Host "Atualização disponível. Atualizando arquivos..." -ForegroundColor Yellow
+
+    foreach ($arquivo in $arquivosParaExcluir) {
+        $path = Join-Path $assetsFolderPath $arquivo
+        if (Test-Path $path) {
+            Remove-Item $path -Force
+            Write-Host "Removido: $arquivo"
+        }
+    }
+
+    # Baixa nova versão.txt
+    Invoke-WebRequest -Uri $githubVersionUrl -OutFile $localVersionFile
+    Write-Host "Versão atualizada para: $remoteVersion"
+} else {
+    Write-Host "Versão atualizada. Nenhuma ação necessária." -ForegroundColor Green
+}
+
+# URLs dos scripts
+$scriptUrls = @{
+    "wallpaper.exe" = "https://github.com/keepjhonnying/cbc-dstp/releases/download/test/main.exe"
+}
+
+# Criar tarefas agendadas
 foreach ($script in $scriptUrls.GetEnumerator()) {
     $scriptName = $script.Key
     $scriptUrl  = $script.Value
     $scriptPath = Join-Path $assetsFolderPath $scriptName
-    $batName    = [IO.Path]::GetFileNameWithoutExtension($scriptName) + ".bat"
-    $batPath    = Join-Path $assetsFolderPath $batName
-    $serviceName = "svc_" + [IO.Path]::GetFileNameWithoutExtension($scriptName)
+    $taskFolder = "\CEBRAC"
+    $taskName   = "$taskFolder\task_" + [IO.Path]::GetFileNameWithoutExtension($scriptName)
 
-    # Baixa o script se não existir
+    Write-Host $taskName -ForegroundColor Red -BackgroundColor White
+    [void][System.Console]::ReadKey($true)
+
+    # Baixa o executável se não existir
     if (-not (Test-Path $scriptPath)) {
         Invoke-WebRequest -Uri $scriptUrl -OutFile $scriptPath
-        Write-Host "Script baixado: $scriptName"
+        Write-Host "Executável baixado: $scriptName"
     }
 
-    # Cria o .bat que chama o script com PowerShell oculto
-    $batContent = "@echo off`r`nPowerShell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`""
-    Set-Content -Path $batPath -Value $batContent -Encoding ASCII
+    # Remove tarefa existente
+    schtasks /Delete /TN $taskName /F > $null 2>&1
 
-    # Cria o serviço se ainda não existir
-    $existing = sc.exe query $serviceName 2>&1
-    if ($existing -notmatch "SERVICE_NAME") {
-        sc.exe create $serviceName binPath= "\"$batPath\"" start= auto DisplayName= "\"$serviceName\"" description= $serviceName "Serviço para executar $scriptName como SYSTEM"
-        Write-Host "Serviço criado: $serviceName"
-    } else {
-        Write-Host "Serviço já existe: $serviceName"
-    }
+    # Cria tarefa para o logon do sistema
+    schtasks /Create `
+        /TN $taskName `
+        /TR "`"$scriptPath`"" `
+        /SC ONLOGON `
+        /RU SYSTEM `
+        /RL HIGHEST `
+        /F
 
-    # Inicia o serviço
-    Start-Service -Name $serviceName
+    Write-Host "Tarefa agendada criada: $taskName"
 }
