@@ -1,4 +1,4 @@
-﻿$wallpaperFolderPath = "C:\assets" # Caminho para a pasta onde o papel de parede será salvo
+﻿$wallpaperFolderPath = "$env:ProgramData\assets" # Caminho para a pasta onde o papel de parede será salvo
 
 $idealWallpaper = "$wallpaperFolderPath\wallpaper_atual.jpg" # Define o caminho para o papel de parede desejado
 

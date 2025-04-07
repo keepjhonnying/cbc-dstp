@@ -1,57 +1,87 @@
-﻿# Caminho para a pasta onde os scripts serão salvos
-$assetsFolderPath = "C:\assets"
+﻿function Center-Text {
+    param ([string]$text)
+    $consoleWidth = [console]::WindowWidth
+    $padLeft = [Math]::Max(0, ($consoleWidth - $text.Length) / 2)
+    return ' ' * $padLeft + $text
+}
 
-# URLs dos scripts PowerShell hospedados no GitHub
+$asciiLines = @'
+ ░▒▓███████▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓█▓▒░▒▓███████▓▒░▒▓████████▓▒░ 
+░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░     
+░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░     
+ ░▒▓██████▓▒░░▒▓█▓▒░      ░▒▓███████▓▒░░▒▓█▓▒░▒▓███████▓▒░  ░▒▓█▓▒░     
+       ░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░        ░▒▓█▓▒░     
+       ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░        ░▒▓█▓▒░     
+░▒▓███████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░        ░▒▓█▓▒░     
+                                                                       
+'@ -split "`n"
+
+foreach ($line in $asciiLines) {
+    Write-Host (Center-Text $line) -ForegroundColor Cyan
+}
+
+Write-Host ""
+Write-Host (Center-Text "Desenvolvido por Jhonny Ilis") -ForegroundColor White
+Write-Host ""
+Write-Host (Center-Text "Pressione qualquer tecla para iniciar...") -ForegroundColor Green
+
+# Aguarda uma tecla
+[void][System.Console]::ReadKey($true)
+
+
+
+# Requer permissão de administrador
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+    [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    #Write-Error "Execute este script como administrador."]
+    Write-Host "Execute este script como administrador...." -ForegroundColor Red -BackgroundColor White
+    exit
+}
+
+
+# Caminho para a pasta onde os scripts serão salvos (acessível a todos os usuários)
+$assetsFolderPath = "$env:ProgramData\cbc-assets"
+if (-not (Test-Path -Path $assetsFolderPath)) {
+    New-Item -ItemType Directory -Path $assetsFolderPath -Force | Out-Null
+    (Get-Item $assetsFolderPath).Attributes = "Hidden"
+}
+
+# URLs dos scripts PowerShell hospedados
 $scriptUrls = @{
     "wallpaper.ps1" = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/refs/heads/main/wallpaper.ps1"
-    #"hibernate.ps1" = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/refs/heads/main/hibernate.ps1"
-    #"gpo.ps1" = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/refs/heads/main/gpo.ps1"
-    #"script4.ps1" = "https://raw.githubusercontent.com/usuario/repositorio/main/script4.ps1"
+    #"outro.ps1" = "https://raw.githubusercontent.com/exemplo/outro.ps1"
 }
 
-# Verifica se a pasta existe, se não, cria como oculta
-if (-not (Test-Path -Path $assetsFolderPath)) {
-    New-Item -ItemType Directory -Path $assetsFolderPath -Force
-    (Get-Item $assetsFolderPath).Attributes = "Hidden" # Define a pasta como oculta
-}
 
-# Função para baixar scripts e criar tarefas agendadas
-function CheckAndDownloadScript {
-    param (
-        [string]$scriptName,
-        [string]$scriptUrl
-    )
-    
-    $scriptPath = Join-Path -Path $assetsFolderPath -ChildPath $scriptName
 
-    # Verifica se o script já existe
-    if (-not (Test-Path -Path $scriptPath)) {
-        # Se não existir, baixa o script do GitHub
+# Para cada script
+foreach ($script in $scriptUrls.GetEnumerator()) {
+    $scriptName = $script.Key
+    $scriptUrl  = $script.Value
+    $scriptPath = Join-Path $assetsFolderPath $scriptName
+    $batName    = [IO.Path]::GetFileNameWithoutExtension($scriptName) + ".bat"
+    $batPath    = Join-Path $assetsFolderPath $batName
+    $serviceName = "svc_" + [IO.Path]::GetFileNameWithoutExtension($scriptName)
+
+    # Baixa o script se não existir
+    if (-not (Test-Path $scriptPath)) {
         Invoke-WebRequest -Uri $scriptUrl -OutFile $scriptPath
         Write-Host "Script baixado: $scriptName"
-
-        # Criação da tarefa agendada
-        $taskName = "Task_$scriptName"
-
-        # Verifica se a tarefa já existe
-        $existingTask = Get-ScheduledTask | Where-Object {$_.TaskName -eq $taskName}
-
-        if (-not $existingTask) {
-            # Se a tarefa não existir, cria a tarefa agendada
-            $action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument "-File `"$scriptPath`""
-            $trigger = New-ScheduledTaskTrigger -AtLogOn  # Ajuste o trigger conforme necessário
-            
-            Register-ScheduledTask -Action $action -Trigger $trigger -TaskName $taskName -User "SYSTEM" -RunLevel Highest
-            Write-Host "Tarefa agendada criada: $taskName"
-        } else {
-            Write-Host "Tarefa já existe: $taskName"
-        }
-    } else {
-        Write-Host "Script já existe: $scriptName"
     }
-}
 
-# Verifica e baixa cada script
-foreach ($script in $scriptUrls.GetEnumerator()) {
-    CheckAndDownloadScript -scriptName $script.Key -scriptUrl $script.Value
+    # Cria o .bat que chama o script com PowerShell oculto
+    $batContent = "@echo off`r`nPowerShell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`""
+    Set-Content -Path $batPath -Value $batContent -Encoding ASCII
+
+    # Cria o serviço se ainda não existir
+    $existing = sc.exe query $serviceName 2>&1
+    if ($existing -notmatch "SERVICE_NAME") {
+        sc.exe create $serviceName binPath= "\"$batPath\"" start= auto DisplayName= "\"$serviceName\"" description= $serviceName "Serviço para executar $scriptName como SYSTEM"
+        Write-Host "Serviço criado: $serviceName"
+    } else {
+        Write-Host "Serviço já existe: $serviceName"
+    }
+
+    # Inicia o serviço
+    Start-Service -Name $serviceName
 }
