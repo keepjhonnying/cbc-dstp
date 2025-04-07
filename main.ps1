@@ -24,7 +24,7 @@ Write-Host ""
 Write-Host (Center-Text "Desenvolvido por Jhonny Ilis") -ForegroundColor White
 Write-Host ""
 Write-Host (Center-Text "Pressione qualquer tecla para iniciar...") -ForegroundColor Green
-[void][System.Console]::ReadKey($true)
+#[void][System.Console]::ReadKey($true)
 
 # Verifica se é administrador
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
@@ -42,7 +42,7 @@ if (-not (Test-Path -Path $assetsFolderPath)) {
 
 # Verificação de versão
 $localVersionFile = Join-Path $assetsFolderPath "version.txt"
-$githubVersionUrl = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/main/version.txt"
+$githubVersionUrl = "https://raw.githubusercontent.com/keepjhonnying/cbc-dstp/refs/heads/main/version.txt"
 
 try {
     $remoteVersion = (Invoke-WebRequest -Uri $githubVersionUrl -UseBasicParsing).Content.Trim()
@@ -91,7 +91,7 @@ foreach ($script in $scriptUrls.GetEnumerator()) {
     $taskName   = "$taskFolder\task_" + [IO.Path]::GetFileNameWithoutExtension($scriptName)
 
     Write-Host $taskName -ForegroundColor Red -BackgroundColor White
-    [void][System.Console]::ReadKey($true)
+    #[void][System.Console]::ReadKey($true)
 
     # Baixa o executável se não existir
     if (-not (Test-Path $scriptPath)) {
