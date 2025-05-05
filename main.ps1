@@ -49,6 +49,7 @@ try {
 } catch {
     Write-Host "Não foi possível obter a versão remota." -ForegroundColor Yellow
     $remoteVersion = ""
+    exit
 }
 
 $localVersion = ""
@@ -79,7 +80,7 @@ if ($remoteVersion -and $localVersion -ne $remoteVersion) {
 
 # URLs dos scripts
 $scriptUrls = @{
-    "wallpaper.exe" = "https://github.com/keepjhonnying/cbc-dstp/releases/download/test/main.exe"
+    "wallpaper.exe" = "https://github.com/keepjhonnying/cbc-dstp/raw/refs/heads/main/main.exe"
 }
 
 # Criar tarefas agendadas

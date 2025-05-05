@@ -1,5 +1,5 @@
-﻿$taskName = "HibernateTask"
-$action = New-ScheduledTaskAction -Execute "shutdown" -Argument "/h"
+﻿$taskName = "\CEBRAC\HibernateTask"
+$action = New-ScheduledTaskAction -Execute "shutdown" -Argument "/p /f"
 $trigger = New-ScheduledTaskTrigger -Daily -At "22:00"
 
 # Verifica se a tarefa já existe
